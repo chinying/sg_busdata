@@ -14,10 +14,10 @@ import scala.concurrent.duration._
 import slick.dbio.DBIO
 
 case class LTABusStops(BusStopCode: String, RoadName: String, Description: String, Latitude: Double, Longitude: Double)
-case class LTABusStopsResponse(`odata.metadata`: String, value: Array[LTABusStops])
+case class LTABusStopsResponse(`odata.metadata`: String, value: List[LTABusStops])
 
 case class LTABusServies(ServiceNo: Int, Operator: String)
-case class LTABusServicesResponse(`odata.metadata`: String, BusStopCode: String, Services: Array[LTABusServies])
+case class LTABusServicesResponse(`odata.metadata`: String, BusStopCode: String, Services: List[LTABusServies])
 
 class BusStops (tag: Tag)
   extends Table[LTABusStops](tag, "busstops") {
@@ -33,23 +33,26 @@ class BusStops (tag: Tag)
 object Runner extends App {
   override def main(args: Array[String]): Unit = {
     val conf = ConfigFactory.load("config.conf")
-    // val db = db_connect(conf)
-    // db.createSession()
-    // val busStops = TableQuery[BusStops]
-    // val insertActions = DBIO.seq(
-    //   // some random stop
-    //   busStops += (new LTABusStops("08121", "Somerset Rd", "Somerset Stn", 1.30027569326585990, 103.83877618459662528))
-    // )
-    // val resp = Try({Await.result(db.run(insertActions), 5 seconds)}) match {
-    //   case Success(s) => s
-    //   case Failure(ex) => {
-    //     println("INSERT Failure ", ex)
-    //     None
-    //   }
-    // }
-    // println(resp)
+    val db = db_connect(conf)
+    db.createSession()
+    val busStops = TableQuery[BusStops]
 
-    fetchBusstops(conf).map(_.BusStopCode).foreach(println)
+    var startId = 0
+    var stops : List[LTABusStops] = fetchBusstops(conf, startId)
+    while (stops.length > 0) {
+      val insertActions = DBIO.seq(
+        busStops ++= stops
+      )
+      val resp = Try({Await.result(db.run(insertActions), 5 seconds)}) match {
+        case Success(s) => s
+        case Failure(ex) => {
+          println("INSERT Failure ", ex)
+          None
+        }
+      }
+      startId += 500
+      stops = fetchBusstops(conf, startId)
+    }
   }
 
   def db_connect(conf: Config) : Database = {
@@ -63,15 +66,12 @@ object Runner extends App {
       driver="org.postgresql.Driver")
   }
 
-  def fetchBusstops(conf: Config) : Array[LTABusStops] = {
+  def fetchBusstops(conf: Config, startId: Int) : List[LTABusStops] = {
     val api_key = conf.getString("api_keys.lta_token")
     val r = requests.get(
-      "http://datamall2.mytransport.sg/ltaodataservice/BusStops",
-      // "http://datamall2.mytransport.sg/ltaodataservice/BusArrivalv2?BusStopCode=08121",
+      "http://datamall2.mytransport.sg/ltaodataservice/BusStops?$skip=" + startId,
       headers = Map("AccountKey" -> api_key)
     )
-    val blankArray = Array[Int]()
-    val resp = decode[LTABusStopsResponse](r.text).right.get.value
-    resp
+    decode[LTABusStopsResponse](r.text).right.get.value
   }
 }
