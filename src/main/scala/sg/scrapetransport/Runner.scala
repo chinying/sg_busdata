@@ -16,8 +16,8 @@ import slick.dbio.DBIO
 case class LTABusStops(BusStopCode: String, RoadName: String, Description: String, Latitude: Double, Longitude: Double)
 case class LTABusStopsResponse(`odata.metadata`: String, value: List[LTABusStops])
 
-case class LTABusServies(ServiceNo: Int, Operator: String)
-case class LTABusServicesResponse(`odata.metadata`: String, BusStopCode: String, Services: List[LTABusServies])
+case class LTABusServices(ServiceNo: Int, Operator: String)
+case class LTABusServicesResponse(`odata.metadata`: String, BusStopCode: String, Services: List[LTABusServices])
 
 class BusStops (tag: Tag)
   extends Table[LTABusStops](tag, "busstops") {
@@ -74,4 +74,6 @@ object Runner extends App {
     )
     decode[LTABusStopsResponse](r.text).right.get.value
   }
+
+  def fetchBusServices(conf: Config, startId: Int) : List[LTABusServices] = ???
 }
