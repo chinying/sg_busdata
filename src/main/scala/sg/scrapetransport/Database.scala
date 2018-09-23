@@ -4,18 +4,15 @@ import slick.jdbc.JdbcBackend.Database
 import slick.driver.PostgresDriver.api._
 import slick.dbio.DBIO
 
-import com.typesafe.config.Config
-
 import scala.util.{Try, Success, Failure}
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
 
 object DatabaseUtils {
-
   val conf = AppConfig.conf
 
-  def db_connect(conf: Config) : Database = {
+  def db_connect() : Database = {
     val host = conf.getString("database.host")
     val username = conf.getString("database.username")
     val password = conf.getString("database.password")
